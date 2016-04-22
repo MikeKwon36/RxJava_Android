@@ -113,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void call(Subscriber<? super String> subscriber) {
                 try {
-                    String data = fetchData("toothpaste"); //hypothetical network call to pull a string from a URL
+                    String data = fetchData("toothpaste"); //network call to pull a string from Walmart API
                     subscriber.onNext(data); // Emit the contents of the URL
                     subscriber.onCompleted(); // Nothing more to emit
                 }catch(Exception e){
@@ -133,8 +133,8 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
-    
-    //fetch data makes a network call to Walmart for a product price on the UI thread (so
+
+    //fetch data makes a network call to Walmart's API for a product price on the UI thread (so
     // unless method is called on a separate thread, Android will crash
     private String fetchData(String keywordSearch){
         String data ="";
