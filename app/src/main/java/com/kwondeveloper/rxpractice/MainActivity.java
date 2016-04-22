@@ -3,6 +3,20 @@ package com.kwondeveloper.rxpractice;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.TextView;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
 
 import rx.Observable;
 import rx.Observer;
@@ -15,10 +29,19 @@ import rx.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity {
 
+    TextView test;
+    private static String productionAppID = "generala-comadiho-PRD-438ccaf50-460fbf19";
+    private static String walmartLookupUpc = "http://api.walmartlabs.com/v1/items?apiKey=jcpk6chshjwn5nbq2khnrvm9&upc=";
+    private static String walmartReviewById1 = "http://api.walmartlabs.com/v1/reviews/";
+    private static String walmartReviewById2 = "?format=json&apiKey=jcpk6chshjwn5nbq2khnrvm9";
+    private static String walmartLookupKeyword = "http://api.walmartlabs.com/v1/search?query=";
+    private static final String walmart_api_key ="&format=json&apiKey=5hbnkvrdvq3dafvfax34meez";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        test = (TextView)findViewById(R.id.testTextView);
 
         //example 1 (more Java oriented)==========================================================
         hello("Ben", "George");
@@ -86,11 +109,11 @@ public class MainActivity extends AppCompatActivity {
         // When you create an Observable in this manner, you have to implement the
         // Observable.OnSubscribe interface and control what it emits by calling the
         // onNext, onError, and onCompleted methods yourself
-        Observable<String> fetchFromGoogle = Observable.create(new Observable.OnSubscribe<String>() {
+        Observable<String> requestDataFromInternet = Observable.create(new Observable.OnSubscribe<String>() {
             @Override
             public void call(Subscriber<? super String> subscriber) {
                 try {
-                    String data = fetchData("http://www.google.com"); //hypothetical network call to pull a string from a URL
+                    String data = fetchData("toothpaste"); //hypothetical network call to pull a string from a URL
                     subscriber.onNext(data); // Emit the contents of the URL
                     subscriber.onCompleted(); // Nothing more to emit
                 }catch(Exception e){
@@ -99,18 +122,48 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         //When the Observable is ready, you can use subscribeOn and observeOn to specify the threads it should use and subscribe to it.
-        fetchFromGoogle
+        requestDataFromInternet
                 .subscribeOn(Schedulers.newThread()) // Create a new Thread
                 .observeOn(AndroidSchedulers.mainThread()) // Use the UI thread
                 .subscribe(new Action1<String>() {
                     @Override
                     public void call(String s) {
-                        view.setText(view.getText() + "\n" + s); // Change a View
+                        test.setText(test.getText() + "\n" + s); // Change a View
                     }
                 });
     }
 
-
+    
+    //fetch data makes a network call to Walmart for a product price on the UI thread (so
+    // unless method is called on a separate thread, Android will crash
+    private String fetchData(String keywordSearch){
+        String data ="";
+        String price="";
+        try {
+            URL url = new URL(walmartLookupKeyword + keywordSearch+walmart_api_key);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.connect();
+            InputStream inputStream = connection.getInputStream();
+            StringBuilder stringBuilder = new StringBuilder();
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+            while ((data = bufferedReader.readLine()) != null) {
+                stringBuilder.append(data);
+            }
+            bufferedReader.close();
+            data = stringBuilder.toString();
+        } catch (Throwable thr) {
+            thr.fillInStackTrace();
+        }
+        try {
+            JSONObject dataObject = new JSONObject(data);
+            JSONArray priceArray = dataObject.optJSONArray("items");
+            JSONObject item = priceArray.optJSONObject(0);
+            price = item.optString("salePrice", "Product Unavailable");
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return price;
+    }
 
     public static void hello(String... names) {
         Observable.from(names).subscribe(new Action1<String>() {
