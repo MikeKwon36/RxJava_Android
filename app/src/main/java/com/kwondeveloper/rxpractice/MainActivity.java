@@ -6,9 +6,12 @@ import android.util.Log;
 
 import rx.Observable;
 import rx.Observer;
+import rx.Subscriber;
 import rx.Subscription;
+import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 import rx.functions.Func1;
+import rx.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -76,6 +79,33 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public Boolean call(Integer integer) { // Ignores any item that returns false
                         return integer % 2 == 0;
+                    }
+                });
+
+        //multi-threading example creates a custom Observable using the create operator.
+        // When you create an Observable in this manner, you have to implement the
+        // Observable.OnSubscribe interface and control what it emits by calling the
+        // onNext, onError, and onCompleted methods yourself
+        Observable<String> fetchFromGoogle = Observable.create(new Observable.OnSubscribe<String>() {
+            @Override
+            public void call(Subscriber<? super String> subscriber) {
+                try {
+                    String data = fetchData("http://www.google.com"); //hypothetical network call to pull a string from a URL
+                    subscriber.onNext(data); // Emit the contents of the URL
+                    subscriber.onCompleted(); // Nothing more to emit
+                }catch(Exception e){
+                    subscriber.onError(e); // In case there are network errors
+                }
+            }
+        });
+        //When the Observable is ready, you can use subscribeOn and observeOn to specify the threads it should use and subscribe to it.
+        fetchFromGoogle
+                .subscribeOn(Schedulers.newThread()) // Create a new Thread
+                .observeOn(AndroidSchedulers.mainThread()) // Use the UI thread
+                .subscribe(new Action1<String>() {
+                    @Override
+                    public void call(String s) {
+                        view.setText(view.getText() + "\n" + s); // Change a View
                     }
                 });
     }
